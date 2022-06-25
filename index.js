@@ -54,6 +54,8 @@ const bucket = cloudStorage.bucket(bucketName);
 app.use(cors());
 // Process the file upload and upload to Google Cloud Storage.
 
+app.get('/favicon.ico', (req, res) => res.status(204));
+
 app.get("/", (req, res) => {
   res.send("hello world")
 })
