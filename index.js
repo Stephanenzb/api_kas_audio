@@ -31,24 +31,70 @@ process.env.CRED = JSON.stringify({
 //authentication to google
 
 
-const keysEnvVar = process.env.CRED;
 
-if (!keysEnvVar){
-  throw new Error ("No credentials found")
-}
+let projectId = "lastkas"; // Get this from Google Cloud
+let keyFilename = "lastkas.json"; // Get this from Google Cloud -> Credentials -> Service Accounts
+const storage = new Storage({
+  projectId,
+  keyFilename,
+});
 
-const keyFileName = JSON.parse(keysEnvVar)
+const bucket = storage.bucket("kas-audio"); // Get this from Google Cloud -> Storage
 
-const client = auth.fromJSON(keyFileName);
+// Gets all files in the defined bucket
+app.get("/upload", async (req, res) => {
+  try {
+    const [files] = await bucket.getFiles();
+    res.send([files]);
+    console.log("Réussi");
+  } catch (error) {
+    res.send("Erreur:" + error);
+  }
+});
 
 
-const cloudStorage =  new Storage({
-  projectId: keyFileName.projectId,
-  credentials: keyFileName});
+// Streams file upload to Google Storage
+app.post("/upload", multer.single("audio-file"), (req, res) => {
+  console.log("Made it /upload");
+  try {
+    if (req.file) {
+      console.log("Upload en cours...");
+      const blob = bucket.file(req.file.originalname);
+      const blobStream = blob.createWriteStream();
 
-const bucketName = "kas-audio";
+      blobStream.on("finish", () => {
+        res.status(200).send("Upload réussi");
+        console.log("Upload réussi");
+      });
+      blobStream.end(req.file.buffer);
+    } else throw "Erreur, l'upload a échoué";
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
 
-const bucket = cloudStorage.bucket(bucketName);
+
+
+
+////////////////////////////////////////////////////////////////////
+//const keysEnvVar = process.env.CRED;
+
+//if (!keysEnvVar){
+ // throw new Error ("No credentials found")
+//}
+
+//const keyFileName = JSON.parse(keysEnvVar)
+
+//const client = auth.fromJSON(keyFileName);
+
+
+//const cloudStorage =  new Storage({
+//  projectId: keyFileName.projectId,
+//  credentials: keyFileName});
+
+//const bucketName = "kas-audio";
+
+//const bucket = cloudStorage.bucket(bucketName);
 
 
 
@@ -61,11 +107,11 @@ app.get("/", (req, res) => {
   res.send("hello world")
 })
 
-app.post('/upload', multer.single('audio-file'), (req, res, next) => {
-    if (!req.file) {
-      res.status(400).send('No file uploaded.');
-      return;
-    }
+//app.post('/upload', multer.single('audio-file'), (req, res, next) => {
+//    if (!req.file) {
+//      res.status(400).send('No file uploaded.');
+//      return;
+//    }
   
     // Create a new blob in the bucket and upload the file data.
     const blob = bucket.file(req.file.originalname);
